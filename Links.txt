@@ -1,0 +1,14 @@
+5 line sol using physics (500 rewards)
+https://towardsdatascience.com/how-to-beat-the-cartpole-game-in-5-lines-5ab4e738c93f
+
+
+Q-learning (avg 195 rewards)
+https://medium.com/swlh/using-q-learning-for-openais-cartpole-v1-4a216ef237df
+
+
+DQN
+(avg 195)
+https://www.kaggle.com/code/dsxavier/dqn-openai-gym-cartpole-with-pytorch
+(max rewards)
+https://blog.gofynd.com/building-a-deep-q-network-in-pytorch-fa1086aa5435
+https://gsurma.medium.com/cartpole-introduction-to-reinforcement-learning-ed0eb5b58288
