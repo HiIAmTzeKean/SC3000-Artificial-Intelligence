@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from gym import make
 import numpy as np
 from gym.wrappers.record_video import RecordVideo
+import pickle
 
 class Observation():
     def __init__(self, observation: np.ndarray) -> None:
@@ -41,6 +42,7 @@ class CartpoleWorld():
         return self.__done or self.__truncated
     def get_reward(self):
         return self.__reward
+    
     def resetWorld(self):
         self.__observation, _ = self.__env.reset()
         self.__reward = 0
@@ -69,6 +71,14 @@ class RLAgent(ABC):
         # update reward
         self._total_reward += reward
         return reward
+    def run(self,  num_of_episode: int):
+        cumulated_reward = 0
+        for i in range(num_of_episode):
+            cumulated_reward += self.run_single_episode()
+        print(f"Mean reward is: {cumulated_reward/num_of_episode}")
+    @abstractmethod
+    def run_single_episode(self) -> int:
+        pass
     def discretise_observation(self, observation: np.ndarray) -> Observation:
         # Posititon round off to 0.01 precision
         # Velocity round off to whole
@@ -83,12 +93,13 @@ class RLAgent(ABC):
 class QLearningAgent(RLAgent):
     def __init__(self, env:CartpoleWorld) -> None:
         super().__init__(env)
-        self.__learning_rate = 0.6
+        self.__learning_rate = 0.2
         # defined for epsilon soft policy
         self.__epsilon = 0.1
         # dictionary of (state,action) -> quality
         self.__q_table : Dict[Tuple[Observation,int],float] = dict()
         self.__pi_table : Dict[Observation, int] = dict()
+        self.load_pickle('qLearningAgent_pi.pkl','qLearningAgent_q.pkl')
         # [left, right] action set
         self.__actions = [0,1]
         self.__discounted_reward = 0.9
@@ -111,8 +122,12 @@ class QLearningAgent(RLAgent):
         cumulated_reward = 0
         for i in range(num_of_episode):
             cumulated_reward += self.run_single_episode()
-        print(f"Mean reward is: {cumulated_reward/num_of_episode}")
-    def run_single_episode(self):
+        
+        print(f"Epsilon: {self.__epsilon}, Discounted reward: {self.__discounted_reward}")
+        print(f"Mean reward is: {cumulated_reward/num_of_episode} for {num_of_episode} episodes")
+        self.save_pickle('qLearningAgent_pi.pkl','qLearningAgent_q.pkl')
+
+    def run_single_episode(self) -> int:
         # clear history
         self._env.resetWorld()
         self._total_reward = 0
@@ -127,7 +142,7 @@ class QLearningAgent(RLAgent):
             s_prime = self.discretise_observation(s_prime)
             
             self.update_q_table(s,R,s_prime)
-        print(f"Episode completed: reward {self._total_reward}")
+        # print(f"Episode completed: reward {self._total_reward}")
         return self._total_reward
 
     def update_q_table(self,s: Observation, R: float, s_prime: Observation):
@@ -156,14 +171,73 @@ class QLearningAgent(RLAgent):
     
     def print_q_table(self):
         print(self.__q_table)
+        
     def get_q_table(self):
         return self.__q_table
     
+    def get_pi_table(self):
+        return self.__pi_table
+    
+    def load_tables(self,pi_table,q_table):
+        """Depreciated.
+        Sets the agent table to args.
+
+        Args:
+            pi_table (Dict): Dictionary of (state,action)
+            q_table (Dict): Dictionary of pi for each state
+        """
+        self.__pi_table = pi_table
+        self.__q_table = q_table
+        
+    def load_pickle(self,pi_table_file: str, q_table_file: str):
+        """Loads pickle file to agent table
+
+        Args:
+            pi_table_file (str): pickle file location
+            q_table_file (str): pickle file location
+        """
+        if (os.path.exists('qLearningAgent_pi.pkl') and os.path.exists('qLearningAgent_pi.pkl')):
+            # load pickle
+            with open(pi_table_file, 'rb') as file:
+                # Call load method to deserialze
+                self.__pi_table = pickle.load(file)
+            
+            with open(q_table_file, 'rb') as file:
+                # Call load method to deserialze
+                self.__q_table = pickle.load(file)
+        else:
+            pass
+    def save_pickle(self,pi_table_file: str, q_table_file: str):
+        with open(pi_table_file, 'wb') as file:
+            # A new file will be created
+            pickle.dump(agent.get_pi_table(), file)
+        with open(q_table_file, 'wb') as file:
+            # A new file will be created
+            pickle.dump(agent.get_q_table(), file)
+    
+import os
 
 world = CartpoleWorld()
 agent = QLearningAgent(world)
-agent.run(50)
-world.set_save_video()
-agent.run_single_episode()
-a= agent.get_q_table()
-print(len(a))
+
+if (os.path.exists('qLearningAgent_pi.pkl') and os.path.exists('qLearningAgent_pi.pkl')):
+    # load pickle
+    with open('qLearningAgent_pi.pkl', 'rb') as file:
+        # Call load method to deserialze
+        pi_table = pickle.load(file)
+    
+    with open('qLearningAgent_q.pkl', 'rb') as file:
+        # Call load method to deserialze
+        q_table = pickle.load(file)
+        
+    agent.load_tables(pi_table,q_table)
+
+for i in range(100):
+    agent.run(1000)
+    print(len(agent.get_q_table()))
+    with open('qLearningAgent_pi.pkl', 'wb') as file:
+        # A new file will be created
+        pickle.dump(agent.get_pi_table(), file)
+    with open('qLearningAgent_q.pkl', 'wb') as file:
+        # A new file will be created
+        pickle.dump(agent.get_q_table(), file)
