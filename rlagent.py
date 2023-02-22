@@ -5,16 +5,14 @@ from gym import make
 import numpy as np
 from gym.wrappers.record_video import RecordVideo
 import pickle
+from typing import NamedTuple
 
-class Observation():
-    def __init__(self, observation: np.ndarray) -> None:
-        self._state = tuple(observation)
-    def get_state(self):
-        return self._state
-    def __hash__(self) -> int:
-        return sum([hash(i+j) for i,j in enumerate(self._state)])
-    def __eq__(self, __o: object) -> bool:
-        return self._state == __o.get_state()
+
+class Observation(NamedTuple):
+    d: float
+    x: float
+    theta: float
+    omega: float
 
 class CartpoleWorld():
     def __init__(self, display: bool = False) -> None:
@@ -27,11 +25,14 @@ class CartpoleWorld():
         self.__truncated: bool  = False
         self.__done: bool = False
         self.__observation, _ = self.__env.reset()
+        
     def get_observation(self) -> np.ndarray:
         return self.__observation
+    
     def update_world(self,action) -> float:
         self.__observation, self.__reward, self.__truncated, self.__done, _ = self.__env.step(action)
         return self.__reward
+    
     def isEnd(self) -> bool:
         # position range
         if not (-2.4 < self.__observation[0] < 2.4):
@@ -40,6 +41,7 @@ class CartpoleWorld():
         if not (-.2095 < self.__observation[2] < .2095):
             return True
         return self.__done or self.__truncated
+    
     def get_reward(self):
         return self.__reward
     
@@ -48,9 +50,11 @@ class CartpoleWorld():
         self.__reward = 0
         self.__done = False
         self.__truncated  = False
-    def set_display_mode(self):
+        
+    def set_to_display_mode(self):
         self.__env = make("CartPole-v1", render_mode="human")
         self.__observation, _ = self.__env.reset()
+        
     def set_save_video(self):
         self.__env  = make("CartPole-v1", render_mode="rgb_array_list")
         self.__env  = RecordVideo(self.__env , video_folder="video", name_prefix = "rl-video")
@@ -63,6 +67,7 @@ class RLAgent(ABC):
     @abstractmethod
     def get_optimal_action(self, s: Observation):
         pass
+    
     def move(self, state: Observation) -> float:
         if (self._env.isEnd()):
             raise Exception("Episode already terminated")
@@ -71,25 +76,31 @@ class RLAgent(ABC):
         # update reward
         self._total_reward += reward
         return reward
+    
     def run(self,  num_of_episode: int):
         cumulated_reward = 0
         for i in range(num_of_episode):
             cumulated_reward += self.run_single_episode()
         print(f"Mean reward is: {cumulated_reward/num_of_episode}")
+    
     @abstractmethod
     def run_single_episode(self) -> int:
         pass
+    
+    def wrap_observation(self, observation: np.ndarray) -> Observation:
+        return Observation(*observation)
+    
     def discretise_observation(self, observation: np.ndarray) -> Observation:
-        # Posititon round off to 0.01 precision
+        # Posititon round off to 0.1 precision
         # Velocity round off to whole
-        # Angle round off to 0.001 precision
+        # Angle round off to 0.01 precision
         # Velocity round off to whole
         observation[0] = round(observation[0],1)
         observation[1] = round(observation[1],0)
         observation[2] = round(observation[2],2)
         observation[3] = round(observation[3],0)
-        return Observation(observation)
-
+        return Observation(*observation)
+    
 class QLearningAgent(RLAgent):
     def __init__(self, env:CartpoleWorld) -> None:
         super().__init__(env)
@@ -160,6 +171,15 @@ class QLearningAgent(RLAgent):
             return 0
     
     def argmax_a_Q(self, state: Observation, action_set: List[int]) -> int:
+        """Returns action that maximises Q function
+
+        Args:
+            state (Observation): state observed
+            action_set (List[int]): list of actions possible
+
+        Returns:
+            int: action
+        """
         return max([(action,self.Q(state,action)) for action in action_set],key=lambda item:item[1])[0]
         
     def get_random_action(self) -> int:
@@ -207,6 +227,7 @@ class QLearningAgent(RLAgent):
                 self.__q_table = pickle.load(file)
         else:
             pass
+        
     def save_pickle(self,pi_table_file: str, q_table_file: str):
         with open(pi_table_file, 'wb') as file:
             # A new file will be created
@@ -216,28 +237,12 @@ class QLearningAgent(RLAgent):
             pickle.dump(agent.get_q_table(), file)
     
 import os
-
-world = CartpoleWorld()
-agent = QLearningAgent(world)
-
-if (os.path.exists('qLearningAgent_pi.pkl') and os.path.exists('qLearningAgent_pi.pkl')):
-    # load pickle
-    with open('qLearningAgent_pi.pkl', 'rb') as file:
-        # Call load method to deserialze
-        pi_table = pickle.load(file)
-    
-    with open('qLearningAgent_q.pkl', 'rb') as file:
-        # Call load method to deserialze
-        q_table = pickle.load(file)
-        
-    agent.load_tables(pi_table,q_table)
-
-for i in range(100):
-    agent.run(1000)
-    print(len(agent.get_q_table()))
-    with open('qLearningAgent_pi.pkl', 'wb') as file:
-        # A new file will be created
-        pickle.dump(agent.get_pi_table(), file)
-    with open('qLearningAgent_q.pkl', 'wb') as file:
-        # A new file will be created
-        pickle.dump(agent.get_q_table(), file)
+if __name__ == "__main__":
+    world = CartpoleWorld()
+    agent = QLearningAgent(world)
+    # print(sorted(agent.get_q_table().items(), key = lambda x : x[1]))
+    # world.set_display_mode()
+    # agent.run(100)
+    # for i in range(1):
+    #     agent.run(100)
+    #     print(len(agent.get_q_table()))
