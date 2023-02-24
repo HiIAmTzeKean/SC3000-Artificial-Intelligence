@@ -28,7 +28,8 @@ class PhysicsAgent(RLAgent):
         else:
             return 0 if theta < 0 else 1
 
-world = CartpoleWorld()
-agent = PhysicsAgent(world)
-world.set_to_display_mode()
-agent.run(1)
+if __name__=="__main__":
+    world = CartpoleWorld()
+    agent = PhysicsAgent(world)
+    world.set_to_display_mode()
+    agent.run(1)

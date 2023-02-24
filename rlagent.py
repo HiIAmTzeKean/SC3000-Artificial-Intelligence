@@ -42,20 +42,20 @@ class CartpoleWorld():
             return True
         return self.__done or self.__truncated
     
-    def get_reward(self):
+    def get_reward(self) -> float:
         return self.__reward
     
-    def resetWorld(self):
+    def resetWorld(self) -> None:
         self.__observation, _ = self.__env.reset()
         self.__reward = 0
         self.__done = False
         self.__truncated  = False
         
-    def set_to_display_mode(self):
+    def set_to_display_mode(self) -> None:
         self.__env = make("CartPole-v1", render_mode="human")
         self.__observation, _ = self.__env.reset()
         
-    def set_save_video(self):
+    def set_save_video(self) -> None:
         self.__env  = make("CartPole-v1", render_mode="rgb_array_list")
         self.__env  = RecordVideo(self.__env , video_folder="video", name_prefix = "rl-video")
 
@@ -65,7 +65,7 @@ class RLAgent(ABC):
         self._total_reward: float = 0
         
     @abstractmethod
-    def get_optimal_action(self, s: Observation):
+    def get_optimal_action(self, s: Observation) -> int:
         pass
     
     def move(self, state: Observation) -> float:
@@ -77,7 +77,7 @@ class RLAgent(ABC):
         self._total_reward += reward
         return reward
     
-    def run(self,  num_of_episode: int):
+    def run(self,  num_of_episode: int) -> None:
         cumulated_reward = 0
         for i in range(num_of_episode):
             cumulated_reward += self.run_single_episode()
@@ -91,7 +91,7 @@ class RLAgent(ABC):
         return Observation(*observation)
     
     def discretise_observation(self, observation: np.ndarray) -> Observation:
-        # Posititon round off to 0.1 precision
+        # Position round off to 0.1 precision
         # Velocity round off to whole
         # Angle round off to 0.01 precision
         # Velocity round off to whole
@@ -181,8 +181,14 @@ class QLearningAgent(RLAgent):
             int: action
         """
         return max([(action,self.Q(state,action)) for action in action_set],key=lambda item:item[1])[0]
-        
+       
+    # todo: action set should be passed into the function for consistency 
     def get_random_action(self) -> int:
+        """Randomly generates an action.
+        
+        Returns:
+            int: Action taken
+        """
         val = np.random.rand()
         if (float(val) % 1) >= 0.5:
             return math.ceil(val)
@@ -229,6 +235,12 @@ class QLearningAgent(RLAgent):
             pass
         
     def save_pickle(self,pi_table_file: str, q_table_file: str):
+        """Saves q and pi table to pickle.
+
+        Args:
+            pi_table_file (str): location of file
+            q_table_file (str): location of file
+        """
         with open(pi_table_file, 'wb') as file:
             # A new file will be created
             pickle.dump(agent.get_pi_table(), file)
@@ -242,7 +254,6 @@ if __name__ == "__main__":
     agent = QLearningAgent(world)
     # print(sorted(agent.get_q_table().items(), key = lambda x : x[1]))
     # world.set_display_mode()
-    # agent.run(100)
-    # for i in range(1):
-    #     agent.run(100)
-    #     print(len(agent.get_q_table()))
+    for i in range(100):
+        agent.run(1000)
+        # print(len(agent.get_q_table()))
