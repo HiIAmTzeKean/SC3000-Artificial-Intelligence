@@ -25,6 +25,8 @@ class CartpoleWorld():
         self.__truncated: bool  = False
         self.__done: bool = False
         self.__observation, _ = self.__env.reset()
+
+        self.env = self.__env
         
     def get_observation(self) -> np.ndarray:
         return self.__observation
@@ -79,8 +81,9 @@ class RLAgent(ABC):
     
     def run(self,  num_of_episode: int) -> None:
         cumulated_reward = 0
-        for i in range(num_of_episode):
-            cumulated_reward += self.run_single_episode()
+        for _ in range(num_of_episode):
+            current_reward = self.run_single_episode()
+            cumulated_reward += current_reward
         print(f"Mean reward is: {cumulated_reward/num_of_episode}")
     
     @abstractmethod
