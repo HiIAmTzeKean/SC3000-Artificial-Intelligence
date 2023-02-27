@@ -4,6 +4,7 @@ class PhysicsAgent(RLAgent):
     
     def __init__(self, env:CartpoleWorld) -> None:
         super().__init__(env)
+
     def run_single_episode(self) -> int:
         # clear history
         self._env.resetWorld()
@@ -13,6 +14,7 @@ class PhysicsAgent(RLAgent):
             s = self.wrap_observation(ndarry)
             self.move(s)
         return self._total_reward
+    
     def get_optimal_action(self, s: Observation):
         """Reference: https://towardsdatascience.com/how-to-beat-the-cartpole-game-in-5-lines-5ab4e738c93f
 
@@ -22,6 +24,8 @@ class PhysicsAgent(RLAgent):
         Returns:
             _type_: _description_
         """
+        #return 1 if s[2] > 0 else 0
+    
         theta, w = s[2:4]
         if abs(theta) < 0.03:
             return 0 if w < 0 else 1
