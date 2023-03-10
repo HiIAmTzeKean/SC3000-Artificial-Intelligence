@@ -47,11 +47,12 @@ class CartpoleWorld():
     def get_reward(self) -> float:
         return self.__reward
     
-    def resetWorld(self) -> None:
+    def resetWorld(self) -> Observation:
         self.__observation, _ = self.__env.reset()
         self.__reward = 0
         self.__done = False
         self.__truncated  = False
+        return Observation(*self.__observation)
         
     def set_to_display_mode(self) -> None:
         self.__env = make("CartPole-v1", render_mode="human")
