@@ -79,18 +79,30 @@ class RLAgent(ABC):
         self._total_reward += reward
         return reward
     
-    def run(self,  num_of_episode: int) -> None:
-        cumulated_reward = 0
-        for _ in range(num_of_episode):
-            current_reward = self.run_single_episode()
-            cumulated_reward += current_reward
-        print(f"Mean reward is: {cumulated_reward/num_of_episode}")
+    
+    def run_training(self, num_of_episode: int) -> None:
+        pass
+    
+    def run_single_episode_training(self) -> int:
+        pass
+
+    @abstractmethod
+    def run_production(self, num_of_episode: int) -> None:
+        pass
     
     @abstractmethod
-    def run_single_episode(self) -> int:
+    def run_single_episode_production(self) -> int:
         pass
     
     def wrap_observation(self, observation: np.ndarray) -> Observation:
+        """Converts numpy array to Observation object
+
+        Args:
+            observation (np.ndarray): array to pass in from cartpole
+
+        Returns:
+            Observation: Object to return
+        """
         return Observation(*observation)
     
     def discretise_observation(self, observation: np.ndarray) -> Observation:
@@ -107,20 +119,39 @@ class RLAgent(ABC):
 class QLearningAgent(RLAgent):
     def __init__(self, env:CartpoleWorld) -> None:
         super().__init__(env)
-        self.__learning_rate = 0.2
+        
+        # defines learning rate
+        self.__learning_rate = 0.5
+        self.__learning_rate_min = 0.2
+        
         # defined for epsilon soft policy
-        self.__epsilon = 0.1
+        # initially set to a large number to encourage exploration
+        # epsilon will decay as episodes increase
+        self.__epsilon = 0.9
+        self._epsilon_min = 0.1
+        
         # dictionary of (state,action) -> quality
         self.__q_table : Dict[Tuple[Observation,int],float] = dict()
         self.__pi_table : Dict[Observation, int] = dict()
-        self.load_pickle('qLearningAgent_pi.pkl','qLearningAgent_q.pkl')
+        
+        # Load pickle file to restore agent previous state
+        self.load_pickle('QL_parameters.pkl')
+        
         # [left, right] action set
         self.__actions = [0,1]
         self.__discounted_reward = 0.9
+        
+        # parameter for production
+        self.__is_production = False
+        
     
     def get_optimal_action(self, s: Observation):
         # a* is the argmax_a Q(s,a)
         a_star: int = self.argmax_a_Q(s,self.__actions)
+        
+        if (self.__is_production):
+            return a_star
+        
         epsilon_over_A: float = self.__epsilon / len(self.__actions)
         
         # apply epsilon soft policy here to encourage exploration
@@ -132,16 +163,44 @@ class QLearningAgent(RLAgent):
             self.__pi_table[s] = self.get_random_action()
         return self.__pi_table[s]
     
-    def run(self,  num_of_episode: int):
+    def update_parameters(self) -> None:
+        self.decay_epsilon()
+        self.decay_learning_rate()
+    
+    def decay_epsilon(self) -> None:
+        if self.__epsilon <= self._epsilon_min:
+            return
+        self.__epsilon *= 0.999999
+    
+    def decay_learning_rate(self) -> None:
+        if self.__learning_rate <= self.__learning_rate_min:
+            return
+        self.__learning_rate *= 0.9999999
+    
+    def run_training(self,  num_of_episode: int):
+        """Overrides base class method
+
+        Args:
+            num_of_episode (int): Number of episdoe to run
+        """
         cumulated_reward = 0
-        for i in range(num_of_episode):
+        for _ in range(num_of_episode):
             cumulated_reward += self.run_single_episode()
         
-        print(f"Epsilon: {self.__epsilon}, Discounted reward: {self.__discounted_reward}")
+        print(f"Epsilon: {self.__epsilon}, Discounted reward: {self.__discounted_reward}, Learning rate: {self.__learning_rate}")
         print(f"Mean reward is: {cumulated_reward/num_of_episode} for {num_of_episode} episodes")
-        self.save_pickle('qLearningAgent_pi.pkl','qLearningAgent_q.pkl')
+        self.save_pickle("QL_parameters.pkl")
+    
+    def run_production(self, num_of_episode: int):
+        self.__is_production = True
+        
+        cumulated_reward = 0
+        for _ in range(num_of_episode):
+            cumulated_reward += self.run_single_episode_production()
 
-    def run_single_episode(self) -> int:
+        print(f"Mean reward is: {cumulated_reward/num_of_episode} for {num_of_episode} episodes")
+
+    def run_single_episode_training(self) -> int:
         # clear history
         self._env.resetWorld()
         self._total_reward = 0
@@ -156,7 +215,22 @@ class QLearningAgent(RLAgent):
             s_prime = self.discretise_observation(s_prime)
             
             self.update_q_table(s,R,s_prime)
-        # print(f"Episode completed: reward {self._total_reward}")
+            self.update_parameters()
+        return self._total_reward
+    
+    def run_single_episode_production(self) -> int:
+        # clear history
+        self._env.resetWorld()
+        self._total_reward = 0
+        
+        s_prime = self._env.get_observation()
+        s_prime = self.discretise_observation(s_prime)
+        
+        while (not self._env.isEnd()):
+            s = s_prime
+            R = self.move(s)
+            s_prime = self._env.get_observation()
+            s_prime = self.discretise_observation(s_prime)
         return self._total_reward
 
     def update_q_table(self,s: Observation, R: float, s_prime: Observation):
@@ -206,50 +280,32 @@ class QLearningAgent(RLAgent):
     
     def get_pi_table(self):
         return self.__pi_table
-    
-    def load_tables(self,pi_table,q_table):
-        """Depreciated.
-        Sets the agent table to args.
-
-        Args:
-            pi_table (Dict): Dictionary of (state,action)
-            q_table (Dict): Dictionary of pi for each state
-        """
-        self.__pi_table = pi_table
-        self.__q_table = q_table
         
-    def load_pickle(self,pi_table_file: str, q_table_file: str):
+    def load_pickle(self, parameters_file: str):
         """Loads pickle file to agent table
 
         Args:
-            pi_table_file (str): pickle file location
-            q_table_file (str): pickle file location
+            parameters (str): pickle file location
         """
-        if (os.path.exists('qLearningAgent_pi.pkl') and os.path.exists('qLearningAgent_pi.pkl')):
-            # load pickle
-            with open(pi_table_file, 'rb') as file:
+        if os.path.exists(parameters_file):
+            with open(parameters_file, 'rb') as file:
                 # Call load method to deserialze
-                self.__pi_table = pickle.load(file)
-            
-            with open(q_table_file, 'rb') as file:
-                # Call load method to deserialze
-                self.__q_table = pickle.load(file)
+                self.__pi_table,self.__q_table,self.__epsilon,self.__learning_rate = pickle.load(file)
         else:
+            print("*** LOG: Pickle file not found")
             pass
         
-    def save_pickle(self,pi_table_file: str, q_table_file: str):
+    def save_pickle(self, parameters_file: str):
         """Saves q and pi table to pickle.
 
         Args:
             pi_table_file (str): location of file
             q_table_file (str): location of file
         """
-        with open(pi_table_file, 'wb') as file:
-            # A new file will be created
-            pickle.dump(agent.get_pi_table(), file)
-        with open(q_table_file, 'wb') as file:
-            # A new file will be created
-            pickle.dump(agent.get_q_table(), file)
+        with open(parameters_file, 'wb') as file:
+            # Call load method to deserialze
+            pickle.dump([self.__pi_table,self.__q_table,self.__epsilon,self.__learning_rate], file)
+        
     
 import os
 if __name__ == "__main__":
@@ -257,6 +313,8 @@ if __name__ == "__main__":
     agent = QLearningAgent(world)
     # print(sorted(agent.get_q_table().items(), key = lambda x : x[1]))
     # world.set_display_mode()
-    for i in range(100):
-        agent.run(1000)
-        # print(len(agent.get_q_table()))
+    # for i in range(100):
+    #     agent.run_production(1000)
+    print(len(agent.get_q_table()))
+    agent.run_production(100)
+    print(len(agent.get_q_table()))
