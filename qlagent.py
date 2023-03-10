@@ -79,15 +79,19 @@ class RLAgent(ABC):
         self._total_reward += reward
         return reward
     
-    def run(self,  num_of_episode: int) -> None:
-        cumulated_reward = 0
-        for _ in range(num_of_episode):
-            current_reward = self.run_single_episode()
-            cumulated_reward += current_reward
-        print(f"Mean reward is: {cumulated_reward/num_of_episode}")
+    
+    def run_training(self, num_of_episode: int) -> None:
+        pass
+    
+    def run_single_episode_training(self) -> int:
+        pass
+
+    @abstractmethod
+    def run_production(self, num_of_episode: int) -> None:
+        pass
     
     @abstractmethod
-    def run_single_episode(self) -> int:
+    def run_single_episode_production(self) -> int:
         pass
     
     def wrap_observation(self, observation: np.ndarray) -> Observation:
@@ -136,10 +140,18 @@ class QLearningAgent(RLAgent):
         # [left, right] action set
         self.__actions = [0,1]
         self.__discounted_reward = 0.9
+        
+        # parameter for production
+        self.__is_production = False
+        
     
     def get_optimal_action(self, s: Observation):
         # a* is the argmax_a Q(s,a)
         a_star: int = self.argmax_a_Q(s,self.__actions)
+        
+        if (self.__is_production):
+            return a_star
+        
         epsilon_over_A: float = self.__epsilon / len(self.__actions)
         
         # apply epsilon soft policy here to encourage exploration
@@ -165,7 +177,7 @@ class QLearningAgent(RLAgent):
             return
         self.__learning_rate *= 0.9999999
     
-    def run(self,  num_of_episode: int):
+    def run_training(self,  num_of_episode: int):
         """Overrides base class method
 
         Args:
@@ -178,8 +190,17 @@ class QLearningAgent(RLAgent):
         print(f"Epsilon: {self.__epsilon}, Discounted reward: {self.__discounted_reward}, Learning rate: {self.__learning_rate}")
         print(f"Mean reward is: {cumulated_reward/num_of_episode} for {num_of_episode} episodes")
         self.save_pickle("QL_parameters.pkl")
+    
+    def run_production(self, num_of_episode: int):
+        self.__is_production = True
+        
+        cumulated_reward = 0
+        for _ in range(num_of_episode):
+            cumulated_reward += self.run_single_episode_production()
 
-    def run_single_episode(self) -> int:
+        print(f"Mean reward is: {cumulated_reward/num_of_episode} for {num_of_episode} episodes")
+
+    def run_single_episode_training(self) -> int:
         # clear history
         self._env.resetWorld()
         self._total_reward = 0
@@ -195,6 +216,21 @@ class QLearningAgent(RLAgent):
             
             self.update_q_table(s,R,s_prime)
             self.update_parameters()
+        return self._total_reward
+    
+    def run_single_episode_production(self) -> int:
+        # clear history
+        self._env.resetWorld()
+        self._total_reward = 0
+        
+        s_prime = self._env.get_observation()
+        s_prime = self.discretise_observation(s_prime)
+        
+        while (not self._env.isEnd()):
+            s = s_prime
+            R = self.move(s)
+            s_prime = self._env.get_observation()
+            s_prime = self.discretise_observation(s_prime)
         return self._total_reward
 
     def update_q_table(self,s: Observation, R: float, s_prime: Observation):
@@ -277,6 +313,8 @@ if __name__ == "__main__":
     agent = QLearningAgent(world)
     # print(sorted(agent.get_q_table().items(), key = lambda x : x[1]))
     # world.set_display_mode()
-    for i in range(100):
-        agent.run(1000)
-        # print(len(agent.get_q_table()))
+    # for i in range(100):
+    #     agent.run_production(1000)
+    print(len(agent.get_q_table()))
+    agent.run_production(100)
+    print(len(agent.get_q_table()))

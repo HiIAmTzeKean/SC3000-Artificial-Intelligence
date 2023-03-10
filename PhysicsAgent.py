@@ -5,7 +5,14 @@ class PhysicsAgent(RLAgent):
     def __init__(self, env:CartpoleWorld) -> None:
         super().__init__(env)
 
-    def run_single_episode(self) -> int:
+    def run_production(self, num_of_episode: int) -> None:
+        cumulated_reward = 0
+        for _ in range(num_of_episode):
+            current_reward = self.run_single_episode_production()
+            cumulated_reward += current_reward
+        print(f"Mean reward is: {cumulated_reward/num_of_episode}")
+
+    def run_single_episode_production(self) -> int:
         # clear history
         self._env.resetWorld()
         self._total_reward = 0
@@ -30,4 +37,4 @@ if __name__=="__main__":
     world = CartpoleWorld()
     agent = PhysicsAgent(world)
     world.set_to_display_mode()
-    agent.run(1)
+    agent.run_production(1)
