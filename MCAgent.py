@@ -1,5 +1,5 @@
 import numpy as np
-from rlagent import CartpoleWorld, Observation
+from qlagent import CartpoleWorld, Observation
 from collections import defaultdict
 import random
 from typing import Dict, List, Tuple
