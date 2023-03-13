@@ -12,7 +12,6 @@ class MCAgent(RLAgent):
         self.env = env
 
         self.total_reward = 0
-        self.max_reward = 0
         self.num_runs = 0
 
         self.actions = [0,1]
@@ -63,35 +62,12 @@ class MCAgent(RLAgent):
         self.decay_epsilon()
         self.num_runs += 1
         self.history = history
-        self.max_reward = max(self.max_reward, total_reward)
         self.total_reward += total_reward    
         return total_reward
     
     # Not Used
     def run_production(self, num_of_episode: int) -> None:
         return super().run_production(num_of_episode)
-    
-    # Not Used
-    def run_single_episode(self) -> int:
-        # clear history
-        self.env.resetWorld()
-        self.total_reward = 0
-
-        history = []
-
-        while (not self.env.isEnd()):
-            ndarry: np.ndarray = self.env.get_observation()
-            s = Observation(*self.discretise_observation(ndarry))
-
-            action = self.get_optimal_action(s)
-            reward = self.env.update_world(action)
-            history.append((s, action, reward))
-            # update reward
-            self.total_reward += reward
-
-        self.update_q_table(history)
-        self.max_reward = max(self.max_reward, self.total_reward)
-        return self.total_reward
     
 
     def update_q_table(self) -> None:
@@ -117,48 +93,10 @@ class MCAgent(RLAgent):
         # self.epsilon starts at 0.9, slowly decreases till a minimum of 0.1
         if random.random() <= self.epsilon:
             action = 1 if s[2] > 0 else 0
-            # Chooses the physics action which a probability of 0.6, and the other action with a prob of 0.4
+            # Chooses the physics action which a probability of 0.7, and the other action with a prob of 0.3
             return action if random.random() <= 0.70 else 1 - action
         
         return max(self.actions, key=lambda a: self.Q[(s,a)])
-    
-    # Not Used
-    def run(self, num_episodes: int, display: bool = False) -> None:
-        cumulated_reward = 0
-
-        # Pre-training, maybe can replace with pre-load data here in the future
-        # Run 1000 times first using the physics solution to populate values
-        self.exploit_rate = 0.0
-        for _ in range(1000):    
-            self.run_single_episode()
-
-
-        outer_range, inner_range = 10, 5000
-        self.exploit_rate = 0.7
-
-        for _ in range(outer_range):
-            total = 0
-            max_reward = 0
-            for _ in range(inner_range):
-                # Using a variable exploitation rate, dk if its a good idea
-                #self.exploit_rate = i / inner_range
-                reward = self.run_single_episode()
-                total += reward
-                max_reward = max(max_reward, reward)
-                
-
-            print(f"Mean reward is: {total / inner_range}")
-            print(f"Max reward is: {max_reward}")
-
-        # Actual run
-        self.actual = True
-
-        if display:
-            self.env.set_to_display_mode()
-
-        for _ in range(num_episodes):
-            current_reward = self.run_single_episode()
-            cumulated_reward += current_reward
 
 
     def load_pickle(self, parameters_file: str):
@@ -189,11 +127,11 @@ class MCAgent(RLAgent):
             # Call load method to deserialze
             pickle.dump([dict(self.Q), dict(self.returns), dict(self.visits), self.epsilon], file)
 
-    def print_stats(self):
-        print(f"avg_reward:{self.total_reward/self.num_runs}")
+    def print_average(self):
+        print(f"avg_reward: {self.total_reward/self.num_runs}")
 
 
-load_and_save = False
+load_and_save = True
 
 if __name__=="__main__":
     world = CartpoleWorld()
@@ -201,23 +139,23 @@ if __name__=="__main__":
     #world.set_to_display_mode()
 
     # training
-    # for i in range(100000):
+    # for i in range(1, 5001):
     #     agent.run_single_episode_training()
 
     #     if i % 1000 == 0:
-    #         agent.print_stats()
+    #         agent.print_average()
 
     # actual
     world.set_to_display_mode()
-    for _ in range(10):
+    for _ in range(3):
         reward = agent.run_single_episode_production()
         print("current run:", reward)
-        agent.print_stats()
+        agent.print_average()
 
-    print("check epsilon value", agent.epsilon)
-    print("check max Q(s,a) values:", max(agent.Q.values()))
-    print("check max visits count:", max(agent.visits.values()))
-    print("check max returns count:", max(agent.returns.values()))
+    # print("check epsilon value", agent.epsilon)
+    # print("check max Q(s,a) values:", max(agent.Q.values()))
+    # print("check max visits count:", max(agent.visits.values()))
+    # print("check max returns count:", max(agent.returns.values()))
 
     if load_and_save:
         agent.save_pickle("MC_parameters.pkl")
