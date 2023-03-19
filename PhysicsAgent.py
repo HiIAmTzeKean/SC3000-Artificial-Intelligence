@@ -1,4 +1,4 @@
-from qlagent import RLAgent, CartpoleWorld, Observation
+from QLAgent import RLAgent, CartpoleWorld, Observation
 
 class PhysicsAgent(RLAgent):
     

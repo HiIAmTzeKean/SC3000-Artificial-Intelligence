@@ -1,7 +1,7 @@
 import os
 import pickle
 import numpy as np
-from qlagent import CartpoleWorld, RLAgent, Observation
+from QLAgent import CartpoleWorld, RLAgent, Observation
 from collections import defaultdict
 import random
 

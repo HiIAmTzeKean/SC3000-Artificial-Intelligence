@@ -80,15 +80,7 @@ class RLAgent(ABC):
         self._total_reward += reward
         return reward
     
-    
-    def run_training(self, num_of_episode: int) -> None:
-        pass
-    
     def run_single_episode_training(self) -> int:
-        pass
-
-    @abstractmethod
-    def run_production(self, num_of_episode: int) -> None:
         pass
     
     @abstractmethod
