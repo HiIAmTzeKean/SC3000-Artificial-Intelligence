@@ -1,8 +1,0 @@
-ez-setup==0.9
-gym==0.26.2
-tensorflow==2.11.0
-tensorflow-estimator==2.11.0
-tensorflow-io-gcs-filesystem==0.30.0
-ffmpeg==1.4
-imageio-ffmpeg==0.4.8
-moviepy==1.0.3
