@@ -14,11 +14,11 @@ boss_of(stevey,appy).
 business(X):-
     smart_phone_technology(X).
 
-/*galactical-s3 is a smart phone tech*/
-smart_phone_technology(galatica_s3).
+/*galactica-s3 is a smart phone tech*/
+smart_phone_technology(galactica-s3).
 
-/*stevey stole galatica from sumsum*/
-steal(stevey,galatica_s3,sumsum).
+/*stevey stole galactica from sumsum*/
+steal(stevey,galactica-s3,sumsum).
 
 rival(X,Y):-
     company(X),
