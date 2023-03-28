@@ -1,13 +1,34 @@
+/* company declared */
 company(sumsum).
 company(appy).
+
+/*sumsum is a competitor of appy*/
 competitor_of(sumsum,appy).
+competitor_of(X,Y):-
+    competitor_of(Y,X).
+
+/*stevey is the boss of appy*/
 boss_of(stevey,appy).
 
-business(X):-smart_phone_technology(X). /*phone is business*/
-smart_phone_technology(galatica_s3). /*Given in text*/
+/*X is a business, if X is a smart phone tech*/
+business(X):-
+    smart_phone_technology(X).
 
+/*galactical-s3 is a smart phone tech*/
+smart_phone_technology(galatica_s3).
+
+/*stevey stole galatica from sumsum*/
 steal(stevey,galatica_s3,sumsum).
-competitor_of(X,Y):-competitor_of(Y,X).
-rival(X,Y):-competitor_of(X,Y).
 
-unethical(Boss):-steal(Boss,Business,Other),boss_of(Boss,Company),rival(Company,Other),business(Business).
+rival(X,Y):-
+    company(X),
+    company(Y),
+    competitor_of(X,Y).
+
+/*A person is unethical if they are a boss of some company,
+  and steals business from other company who is a rival*/
+unethical(Boss):-
+    steal(Boss,Business,Other),
+    boss_of(Boss,Company),
+    rival(Company,Other),
+    business(Business).

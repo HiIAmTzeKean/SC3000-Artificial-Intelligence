@@ -1,8 +1,3 @@
-male(prince_charles).
-male(prince_andrew).
-male(prince_edward).
-female(princess_ann).
-
 older(prince_charles,princess_ann).
 older(princess_ann,prince_andrew).
 older(prince_andrew,prince_edward).
@@ -23,6 +18,7 @@ count([],N) :-
 count([X|T],N):-
     count(T,N1),
     N is N1 + 1.
+
 /* Call the method below to get the answer
 royal(X,4) where 4 is the number of family members to consider*/
 royal(X,N):-

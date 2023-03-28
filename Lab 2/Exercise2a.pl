@@ -31,6 +31,8 @@ count([X|T],N):-
     count(T,N1),
     N is N1 + 1.
 
+/* Call the method below to get the answer
+royal(X,4) where 4 is the number of family members to consider*/
 royal(X,N):-
     succession(X),
     count(X,N).
